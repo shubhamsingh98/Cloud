@@ -1,0 +1,50 @@
+Applications
+-teams can run them within build/release pipeline
+-one can decide whether to fail the release outright or to continue despite failures while sending an email to the build/release owners or to hold progress until someone manually approves
+-if all SVTs pass in the pre-prod environment, then a release can be 'promoted' to prod.
+-SVTs can be injected into the build/release workflow
+
+Adding SVTs in the release pipeline
+-Step-1: Create a release definition or open an existing one.
+-Step-2: Add the AzSK-SVT release task to the pipeline.
+Click on "Add Tasks", and select "AzSK Security Verification Test".
+
+Click on "Add" and "Close".
+--Step-3: Specify the input parameters for the SVT task.
+Also scan subscription controls: Switch to scan subscription security controls. This will require Azure Connection (SPN) to have atleast 'Reader' access at the subscription scope and ‘Contributor’ access on the ‘AzSKRG’ resource group.
+Send events to Log Analytics: Switch to enable this task to publish SVT evaluation results to a Log Analytics workspace. Steps to configure workspace credentials are explained in Step-4
+Aggregate control status: Switch to aggregate the SVTs control output. When this is turned off it would show all the failed individual controls in the task summary output.
+Do not auto-update AzSK: Switch to toggle auto update of AzSK and required Az modules on the build server. Keep this un-checked for Hosted agent and Hosted VS2017 and while using SVT task fot the first time and if you want to update AZSK the version of AzSK.
+
+-Step-4: (Optional) Setup connectivity from CICD to Log Analytics.
+This feature enables you to route the control scan results from SVTs in CICD pipelines to a Log Analytics workspace.
+single dashboard
+2Options
+
+-Step-5: Setup Online Policy URL (Mandatory for Org policy users e.g. CSE users)
+2Options
+-Step-6: Save the Release Definition.
+The first permission is required so that the SVTs can scan resources for security issues successfully and the second permission is requires so that any past attestations for controls are respected by the scan.
+
+
+
+
+Verifying that the SVTs have been added and configured correctly
+-Step-1: Start the release pipeline. This can be done by adding a new release for an existing build (or trigger a new release via a minor/trial check-in).
+-Step-2: Verify that the release pipeline has started. Once the release is triggered, we can see that it is in progress by clicking on "Releases" (or via "Build & Release" menu in the VSTS menu).
+-Step-3: View the release outcome.
+In a few minutes the release pipeline should complete and we can view the outcomes as shown below
+-Step-4: Look at the "Issues" to see why the release failed.
+The summary output shows the cause of failure 
+-Step-5: Look at the complete output log of the AzSK portion of the release pipeline execution .
+-Step-6: See the summary "CSV" and detailed "LOG" output files for the AzSK SVTs.
+ZIP
+
+
+
+
+
+Advanced CICD scanning capabilities
+
+AzSK ARM Template Checker
+The ARM Template security check script runs a scan on your given ARM Template to examine various conditions and configurations that need to be present in your ARM Template for secured resource deployment.
