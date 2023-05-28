@@ -1,0 +1,90 @@
+trigger:
+    batch: false
+    branches:
+        include:
+            - dev
+    paths:
+        include:
+            - ctr-iot-ui/
+
+variables:
+    dockerRegistryServiceConnection: '2d84452b-d206-4207-8aac-3ebb574bb8b9'
+    imageRepository: 'ctr-iot-ui-preprod'
+    containerRegistry: 'ctriotsuitepreprod'
+    dockerfilePath: '$(Build.SourcesDirectory)/ctr-iot-ui/Dockerfile'
+    tag: '$(Build.BuildId)'
+    helmVersionToInstall: '3.2.1'
+    connectionType: 'Azure Resource Manager'
+    azureSubscription: 'ctr asc'
+    azureResourceGroup: 'iot-suite'
+    kubernetesCluster: 'akscluster-35484'
+    chartPath: '$(Pipeline.Workspace)/chart/'
+    releaseName: 'ius'
+    vmImageName: 'ubuntu-latest'
+
+
+stages:
+    - stage: Build
+      displayName: Build Docker Image
+      jobs:
+        - job: Build
+          displayName: Build
+          pool:
+            vmImage: $(vmImageName)
+          steps:
+            - task: Docker@2
+              displayName: Build and push an image to container registry
+              inputs:
+                command: buildAndPush
+                repository: $(imageRepository)
+                dockerfile: $(dockerfilePath)
+                containerRegistry: $(containerRegistry)
+                tags: |
+                  $(tag)
+                  latest
+
+            - task: PublishBuildArtifacts@1
+              name: PublishDropFolder
+              displayName: Publish Helm Chart Artifacts
+              inputs:
+                PathtoPublish: "ctr-iot-ui/ui"
+                ArtifactName: "chart"
+                publishLocation: "Container"
+    
+    - stage: Dev
+      displayName: Dev
+      dependsOn:
+        - Build
+      condition: and(succeeded(), in(variables['build.sourceBranchName'], 'dev') )
+      jobs:
+        - deployment: deployDevToAKS
+          displayName: Deploy dev profile
+          pool:
+            vmImage: $(vmImageName)
+          environment: dev
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                - task: HelmInstaller@1
+                  name: HelmInstall
+                  displayName: Install helm version $(helmVersionToInstall)
+                  inputs:
+                    helmVersionToInstall: $(helmVersionToInstall)
+
+                - task: HelmDeploy@0
+                  name: HelmDeploy
+                  displayName: Install/ Upgrage helm release
+                  inputs:
+                    connectionType: "Azure Resource Manager"
+                    azureSubscription: $(azureSubscription)
+                    azureResourceGroup: $(azureResourceGroup)
+                    kubernetesCluster: $(kubernetesCluster)
+                    useClusterAdmin: true
+                    namespace: "dev"
+                    command: "upgrade"
+                    chartType: "FilePath"
+                    chartPath: $(chartPath)
+                    releaseName: $(releaseName)
+                    overrideValues: "image.tag=$(tag),namespace=dev"
+                    valueFile: "$(Pipeline.Workspace)/chart/values-dev.yaml"
